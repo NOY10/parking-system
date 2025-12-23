@@ -34,9 +34,9 @@ timers = SlotTimers(SLOTS.keys())
 previous = set()
 frame_count = 0
 
-
 def process_loop():
     global previous, frame_count
+    mask = None
 
     try:
         while True:
@@ -44,37 +44,49 @@ def process_loop():
                 time.sleep(0.01)
                 continue
 
-            frame = capture.latest_frame.copy()
+            # 1. ORIGINAL FRAME for visual display (No black mask)
+            display_frame = capture.latest_frame.copy()
             frame_count += 1
 
-            # FRAME SKIP
+            # 2. Setup ROI mask once
+            if mask is None:
+                mask = np.zeros(display_frame.shape[:2], dtype=np.uint8)
+                roi_corners = np.array([SRC_POINTS], dtype=np.int32)
+                cv2.fillPoly(mask, roi_corners, 255)
+
+            # 3. Create HIDDEN MASKED FRAME for YOLO only
+            # This is never shown to the user, so no flickering occurs
+            detection_input = cv2.bitwise_and(display_frame, display_frame, mask=mask)
+
+            # 4. FRAME SKIP Logic
             if frame_count % FRAME_SKIP != 0:
                 with lock:
-                    shared_state["latest_frame"] = frame
+                    shared_state["latest_frame"] = display_frame
                 continue
 
-            # YOLO detection
-            results = detector.detect(frame)
+            # 5. YOLO detection on the MASKED frame
+            results = detector.detect(detection_input)
             occupied, bev_points = compute_occupied(results, BEV_SLOTS, transformer)
             stable = debouncer.update(occupied)
 
-            # Timers
+            # 6. Logic & Timers
             timers.update(stable, previous)
             previous = stable.copy()
-
-            # ✅ build slots_detail AFTER stable exists
             slots_detail = timers.build_slot_details(stable)
 
-            draw_slots(frame, SLOTS, stable)
-            draw_ground_points(frame, results, VEHICLE_CLASSES)
-            draw_homography_roi(frame, SRC_POINTS)
+            # 7. DRAWING - We draw everything on the CLEAN display_frame
+            draw_slots(display_frame, SLOTS, stable)
+            draw_ground_points(display_frame, results, VEHICLE_CLASSES)
+            draw_homography_roi(display_frame, SRC_POINTS) # Draw ROI border for reference
             
+            # 8. BEV View remains in its own window
             bev_view = draw_bev_view(stable, bev_points, BEV_SLOTS)
             cv2.imshow("BEV - Parking Map", bev_view)
             cv2.waitKey(1)
 
+            # 9. Update Shared State with the CLEAN frame
             with lock:
-                shared_state["latest_frame"] = frame
+                shared_state["latest_frame"] = display_frame
                 shared_state["current_status"].update({
                     "total": len(SLOTS),
                     "occupied": len(stable),
@@ -87,6 +99,7 @@ def process_loop():
 
     except Exception as e:
         print("❌ process_loop crashed:", e)
+
 
 def start_video_thread():
     print("🚀 start_video_thread called")
