@@ -1,0 +1,72 @@
+import cv2
+import numpy as np
+from config.settings import BEV_HEIGHT, BEV_WIDTH
+
+# ===============================
+# CAMERA VIEW
+# ===============================
+
+def draw_slots(frame, slots, occupied):
+    for sid, poly in slots.items():
+        color = (0, 0, 255) if sid in occupied else (0, 255, 0)
+        cv2.polylines(frame, [poly], True, color, 2)
+
+def draw_ground_points(frame, results, vehicle_classes):
+    if not results.boxes:
+        return
+
+    for box, cls in zip(results.boxes.xyxy.cpu().numpy(),
+                        results.boxes.cls.cpu().numpy()):
+        if int(cls) in vehicle_classes:
+            x1, y1, x2, y2 = box.astype(int)
+            cv2.circle(frame, ((x1+x2)//2, y2), 4, (255, 0, 255), -1)
+
+def draw_homography_roi(frame, src_points):
+    # 1. Convert points to integer for OpenCV
+    pts_int = src_points.astype(np.int32)
+    
+    # 2. Draw the Polygon (OUTSIDE the for loop)
+    cv2.polylines(frame, [pts_int], isClosed=True, color=(255, 0, 0), thickness=2)
+    
+    # 3. Draw individual points and labels
+    for i, (x, y) in enumerate(pts_int):
+        cv2.circle(frame, (x, y), 8, (255, 0, 0), -1)
+        cv2.putText(
+            frame, 
+            f"P{i+1}", 
+            (x + 5, y - 10), 
+            cv2.FONT_HERSHEY_SIMPLEX, 
+            0.8, 
+            (255, 0, 0), 
+            2
+        )
+
+# # ===============================
+# # BEV VIEW
+# # ===============================
+def draw_bev_view(occupied_slots, bev_points,bev_slots):
+    """
+    occupied_slots: set of occupied slot IDs
+    bev_points: list of (x, y) vehicle ground points in BEV space
+    """
+    bev = np.zeros((BEV_HEIGHT, BEV_WIDTH, 3), dtype=np.uint8)
+
+    # Draw parking slots
+    for slot_id, poly in bev_slots.items():
+        color = (0, 0, 255) if slot_id in occupied_slots else (0, 255, 0)
+        cv2.polylines(bev, [poly], True, color, 2)
+
+        # Slot ID label
+        cx, cy = poly.mean(axis=0).astype(int)
+        cv2.putText(
+            bev, f"S{slot_id}",
+            (cx - 10, cy),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5, color, 1
+        )
+
+    # Draw vehicle points
+    for x, y in bev_points:
+        cv2.circle(bev, (x, y), 5, (255, 0, 255), -1)
+
+    return bev

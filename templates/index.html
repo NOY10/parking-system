@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Smart Parking</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin-top: 20px;
+        background: #f4f6f8;
+      }
+
+      h1 {
+        margin-bottom: 10px;
+      }
+
+      .container {
+        display: inline-block;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      #status {
+        font-size: 1.2em;
+        margin: 15px 0;
+        font-weight: bold;
+      }
+
+      #slots {
+        margin-top: 10px;
+        text-align: left;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .slot {
+        padding: 8px 10px;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        font-weight: bold;
+      }
+
+      .occupied {
+        background-color: #ffe6e6;
+        color: #c62828;
+      }
+
+      .free {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      #restart-btn {
+        margin-top: 15px;
+        padding: 8px 16px;
+        font-size: 1em;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      #restart-btn:hover {
+        background-color: #45a049;
+      }
+
+      img {
+        border-radius: 6px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>🚗 Smart Parking Management</h1>
+
+      <img src="{{ url_for('video_feed') }}" width="960" alt="Video stream" />
+
+      <div id="status">Loading...</div>
+
+      <div id="slots"></div>
+
+      <button id="restart-btn" onclick="restartStream()">Restart Stream</button>
+    </div>
+
+    <script>
+      function formatSeconds(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return `${h}h ${m}m ${s}s`;
+      }
+
+      async function updateStatus() {
+        try {
+          const res = await fetch("/parking_status");
+          const data = await res.json();
+          
+          console.log("API Response:", data); // Debug logging
+
+          // Summary
+          document.getElementById(
+            "status"
+          ).innerText = `Total: ${data.total} | Free: ${data.free} | Occupied: ${data.occupied}`;
+
+          const slotsDiv = document.getElementById("slots");
+          slotsDiv.innerHTML = "";
+
+          const now = new Date();
+
+          // Check if slots data exists
+          if (data.slots && typeof data.slots === 'object') {
+            for (const [slotId, slot] of Object.entries(data.slots)) {
+              let seconds = slot.duration_sec || 0;
+
+              if (slot.occupied && slot.start_time) {
+                const start = new Date(slot.start_time);
+                seconds += Math.floor((now - start) / 1000);
+              }
+
+              const div = document.createElement("div");
+              div.className = "slot " + (slot.occupied ? "occupied" : "free");
+
+              div.innerText = `Slot ${slotId}: ${
+                slot.occupied ? "OCCUPIED" : "FREE"
+              } | Time: ${formatSeconds(seconds)}`;
+
+              slotsDiv.appendChild(div);
+            }
+          } else {
+            console.error("data.slots is missing or invalid:", data);
+            slotsDiv.innerHTML = "<p style='color: red;'>Error: Slot data not available</p>";
+          }
+        } catch (e) {
+          console.error("Status fetch failed:", e);
+        }
+      }
+
+      async function restartStream() {
+        try {
+          const res = await fetch("/restart", { method: "POST" });
+          if (!res.ok) throw new Error();
+
+          const videoFeed = document.querySelector('img[alt="Video stream"]');
+          videoFeed.src =
+            videoFeed.src.split("?")[0] + "?" + new Date().getTime();
+        } catch (e) {
+          alert("Failed to restart stream");
+        }
+      }
+
+      // Update every second
+      setInterval(updateStatus, 1000);
+      updateStatus();
+    </script>
+  </body>
+</html>
