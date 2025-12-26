@@ -121,6 +121,7 @@ import threading
 import cv2
 
 from camera.rtsp_capture import RTSPCapture
+from camera.VideoFileCapture import VideoFileCapture
 from detection.yolo_detector import VehicleDetector
 from bev.homography import BEVTransformer
 from parking.slots import load_slots, transform_slots
@@ -129,6 +130,9 @@ from parking.debounce import Debouncer
 from parking.timers import SlotTimers
 from config.settings import *
 from state.shared_state import shared_state, lock
+
+from anpr.buffer import update_anpr
+from anpr.worker import _worker
 
 #debug
 from parking.renderer import (
@@ -140,6 +144,7 @@ from parking.renderer import (
 )
 from config.settings import VEHICLE_CLASSES,SRC_POINTS
 
+capture = VideoFileCapture(VIDEO_SOURCE)
 capture = RTSPCapture(VIDEO_SOURCE)
 detector = VehicleDetector(MODEL_PATH)
 transformer = BEVTransformer(H_MATRIX)
@@ -155,6 +160,8 @@ frame_count = 0
 
 #Persistent State
 last_yolo_results = None
+
+# start_anpr_worker()
 
 def process_loop():
     global previous, frame_count, last_yolo_results
@@ -193,11 +200,23 @@ def process_loop():
 
                     # --- PARKING LOGIC ---
                     # Update 'stable' and 'bev_points' here
-                    occupied, bev_points = compute_occupied(last_yolo_results, BEV_SLOTS, transformer)
-                    stable = debouncer.update(occupied)
-                    timers.update(stable, previous)
-                    previous = stable.copy()
+                    try:
+                        occupied, bev_points = compute_occupied(last_yolo_results, BEV_SLOTS, transformer)
+                        stable = debouncer.update(occupied)
+                        timers.update(stable, previous)
+                        previous = stable.copy()
+                    except ValueError as e:
+                        print(f"⚠️ Skipping occupancy calculation: {e}")
+                        occupied, bev_points = set(), []
                     slots_detail = timers.build_slot_details(stable)
+
+                    # --- ANPR INTEGRATION ---
+                    if last_yolo_results.boxes.id is not None:
+                        boxes = last_yolo_results.boxes.xyxy.cpu().numpy()
+                        ids = last_yolo_results.boxes.id.int().cpu().numpy()                                    
+                         # Use your new buffer utility
+                        for box, v_id in zip(boxes, ids):
+                            update_anpr(v_id, display_frame, box)
 
                     # Update shared status
                     with lock:
@@ -208,6 +227,7 @@ def process_loop():
                             "occupied_slots": list(stable),
                             "slots": slots_detail
                         })
+                        current_plates = shared_state.get("anpr_results", {}).copy()
 
             # 5. DRAWING (Runs EVERY frame - using latest known data)
             # This prevents flickering because we draw even on skipped frames
@@ -215,7 +235,9 @@ def process_loop():
                 draw_slots(display_frame, SLOTS, stable)
                 draw_ground_points(display_frame, last_yolo_results, VEHICLE_CLASSES)
                 draw_homography_roi(display_frame, SRC_POINTS)
-                draw_vehicle_analytics(display_frame, last_yolo_results, {})
+                draw_vehicle_analytics(display_frame, last_yolo_results, current_plates)
+
+                # print("current_plates",current_plates)
                 
                 # 6. BEV View update
                 bev_view = draw_bev_view(stable, bev_points, BEV_SLOTS)
@@ -237,3 +259,4 @@ def start_video_thread():
     print("🚀 start_video_thread called")
     threading.Thread(target=capture.run, daemon=True).start()
     threading.Thread(target=process_loop, daemon=True).start()
+    threading.Thread(target=_worker, daemon=True).start()

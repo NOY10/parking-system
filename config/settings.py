@@ -7,23 +7,31 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
 )
 
 VIDEO_SOURCE = "rtsp://onvifuser:bht%402025@192.168.1.6:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1"
+# VIDEO_SOURCE = "./config/123Test.mp4"
 MODEL_PATH = "yolo11n.pt"
 LPD_PATH = "license_plate_detector.pt"
-SLOTS_JSON_FILE = "detection/parking_slots.json"
+SLOTS_JSON_FILE = "detection/parking_slots__forV.json"
 
 VEHICLE_CLASSES = {2, 3, 5, 7}
-BHUTAN_REGEX = r"(BP|BT|BG)[\- ]?\d[\- ]?[A-Z]\d{3,4}"
+BHUTAN_REGEX = r"(BP|BT|BG|GP|B8|8P|8T|8G)[\- ]?\d[\- ]?[A-Z]\d{4}"
 BUFFER_SIZE = 8 
 
 FRAME_SKIP = 4
 MIN_FRAMES_FOR_CHANGE = 3
 
 # BEV
+# SRC_POINTS = np.float32([
+#     [646, 419],
+#     [496, 1438],
+#     [2558, 1438],
+#     [2558, 169]
+# ])
+
 SRC_POINTS = np.float32([
-    [646, 419],
-    [496, 1438],
+    [400, 240],
+    [400, 1438],
     [2558, 1438],
-    [2558, 169]
+    [2558, 270]
 ])
 
 BEV_WIDTH, BEV_HEIGHT = 800, 600

@@ -10,5 +10,6 @@ shared_state = {
         "free": 0,
         "occupied_slots": [],
         "slots": {}
-    }
+    },
+    "anpr_results": {},
 }

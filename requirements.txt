@@ -7,7 +7,8 @@ eventlet>=0.36
 ultralytics>=8.3
 opencv-python>=4.10
 numpy>=1.26
-easyocr>=1.7
+paddlepaddle>=2.6.0
+paddleocr>=2.7.0
 
 # --- Database ---
 SQLAlchemy>=2.0
