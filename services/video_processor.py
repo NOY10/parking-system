@@ -131,8 +131,12 @@ from parking.timers import SlotTimers
 from config.settings import *
 from state.shared_state import shared_state, lock
 
+#db_manager
+from database.manager import db_manager
+
 from anpr.buffer import update_anpr
 from anpr.worker import _worker
+
 
 #debug
 from parking.renderer import (
@@ -145,7 +149,7 @@ from parking.renderer import (
 from config.settings import VEHICLE_CLASSES,SRC_POINTS
 
 capture = VideoFileCapture(VIDEO_SOURCE)
-capture = RTSPCapture(VIDEO_SOURCE)
+# capture = RTSPCapture(VIDEO_SOURCE)
 detector = VehicleDetector(MODEL_PATH)
 transformer = BEVTransformer(H_MATRIX)
 
@@ -153,7 +157,7 @@ SLOTS = load_slots()
 BEV_SLOTS = transform_slots(SLOTS)
 
 debouncer = Debouncer(SLOTS.keys(), MIN_FRAMES_FOR_CHANGE)
-timers = SlotTimers(SLOTS.keys())
+timers = SlotTimers(SLOTS.keys(), db_manager=db_manager)
 
 previous = set()
 frame_count = 0
@@ -201,9 +205,9 @@ def process_loop():
                     # --- PARKING LOGIC ---
                     # Update 'stable' and 'bev_points' here
                     try:
-                        occupied, bev_points = compute_occupied(last_yolo_results, BEV_SLOTS, transformer)
+                        occupied, bev_points, slot_vehicle_map  = compute_occupied(last_yolo_results, BEV_SLOTS, transformer)
                         stable = debouncer.update(occupied)
-                        timers.update(stable, previous)
+                        timers.update(stable, previous,slot_vehicle_map)
                         previous = stable.copy()
                     except ValueError as e:
                         print(f"⚠️ Skipping occupancy calculation: {e}")

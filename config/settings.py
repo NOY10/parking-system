@@ -6,8 +6,8 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
     "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay|stimeout;5000000"
 )
 
-VIDEO_SOURCE = "rtsp://onvifuser:bht%402025@192.168.1.6:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1"
-# VIDEO_SOURCE = "./config/123Test.mp4"
+# VIDEO_SOURCE = "rtsp://onvifuser:bht%402025@192.168.1.6:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1"
+VIDEO_SOURCE = "./config/123Test.mp4"
 MODEL_PATH = "yolo11n.pt"
 LPD_PATH = "license_plate_detector.pt"
 SLOTS_JSON_FILE = "detection/parking_slots__forV.json"

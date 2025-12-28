@@ -35,6 +35,7 @@ from state.shared_state import shared_state, lock
 from config.settings import LPD_PATH
 from anpr.enhancer import enhance_plate
 from anpr.blur_score import get_blur_score
+from database.manager import  db_manager;
 
 def _worker():
     print("🟢 ANPR worker initialized and waiting...")
@@ -114,7 +115,8 @@ def _worker():
             if batch_results:
                 # Since we only processed one (the best), 
                 # most_common will just be that result.
-                most_common = Counter(batch_results).most_common(1)[0][0]
+                most_common = batch_results[0]
+                db_manager.update_plate(v_id, most_common)
                 shared_state["anpr_results"][v_id] = most_common
                 print(f"✅ FINAL PLATE for ID {v_id}: {most_common} (Score: {best_score:.2f})")
             else:

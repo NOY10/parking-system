@@ -12,6 +12,7 @@ paddleocr>=2.7.0
 
 # --- Database ---
 SQLAlchemy>=2.0
+psycopg2-binary
 
 # --- Environment Variables ---
 python-dotenv>=1.0
