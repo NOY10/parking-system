@@ -200,6 +200,8 @@ from queue import Queue
 from anpr.blur_score import get_blur_score
 from detection.plate_detector import PlateDetector
 from config.settings import BUFFER_SIZE, LPD_PATH
+from state.shared_state import shared_state, lock
+from database.manager import db_manager
 
 # ================== INIT ==================
 plate_detector = PlateDetector(LPD_PATH)
@@ -219,7 +221,7 @@ first_seen_time = {}
 MIN_SHARPNESS = 40        
 MIN_PLATE_WIDTH = 60      
 BEST_SCORE_THRESHOLD = 85 
-MAX_SCAN_TIME_SEC = 120
+MAX_SCAN_TIME_SEC = 30
 MAX_PLATES_PER_VEHICLE = BUFFER_SIZE
 
 # ================== DEBUG DIRS ==================
@@ -264,18 +266,24 @@ def update_anpr(v_id, frame, box):
     # send whatever we have to OCR anyway.
     if elapsed > MAX_SCAN_TIME_SEC:
         if v_id in car_buffer and car_buffer[v_id]:
-            print(f"⏱️ TIMEOUT: Sending best available plates for vehicle {v_id}")
-            
-            # Save the images being sent
+            print(f"⏱️ TIMEOUT: Sending best available ({len(car_buffer[v_id])}) for {v_id}")
             save_ocr_batch(v_id, car_buffer[v_id])
-            
-            # Push to OCR
             if not task_queue.full():
                 task_queue.put((v_id, car_buffer[v_id]))
                 processed_ids.add(v_id)
         else:
+            # --- NEW LOGIC FOR NEVER SEEN PLATES ---
             print(f"⏱️ TIMEOUT: No plates ever found for vehicle {v_id}")
             no_plate_ids.add(v_id)
+            
+            # Update shared state so the Web UI doesn't say "Detecting..."
+            with lock:
+                if "anpr_results" not in shared_state:
+                    shared_state["anpr_results"] = {}
+                shared_state["anpr_results"][v_id] = "NOT_FOUND"
+            
+            # Update Database so the record isn't stuck
+            db_manager.update_plate(v_id, "NOT_FOUND", "static/detected_plates/no_plate.jpg")
             
         car_buffer.pop(v_id, None)
         first_seen_time.pop(v_id, None)
