@@ -81,20 +81,25 @@ def video_feed():
 def parking_status():
     with lock:
         return jsonify(shared_state["current_status"])
-
+        
 @app.route("/parking_sessions", methods=["GET"])
 def get_parking_sessions():
-    """Fetches all parking history from the database."""
+    """Fetches all parking history including the plate image path."""
     try:
         records = db_manager.get_all_sessions()
         
         data = []
         for r in records:
+            # Determine the image URL (Flask serves 'static' folder automatically)
+            # If path is 'static/detected_plates/veh_1.jpg', the URL is '/static/detected_plates/veh_1.jpg'
+            img_url = f"/{r.plate_image_path}" if r.plate_image_path else "/static/detected_plates/no_plate.jpg"
+
             data.append({
                 "id": r.id,
                 "slot_id": r.slot_id,
                 "car_plate": r.car_plate,
                 "vehicle_id": r.vehicle_id,
+                "plate_image": img_url,  # <--- Added this field
                 "start_time": r.start_time.strftime("%Y-%m-%d %H:%M:%S") if r.start_time else None,
                 "end_time": r.end_time.strftime("%Y-%m-%d %H:%M:%S") if r.end_time else None,
                 "duration_sec": r.duration_sec
