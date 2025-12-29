@@ -6,11 +6,11 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
     "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay|stimeout;5000000"
 )
 
-# VIDEO_SOURCE = "rtsp://onvifuser:bht%402025@192.168.1.6:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1"
-VIDEO_SOURCE = "./config/123Test.mp4"
+VIDEO_SOURCE = "rtsp://onvifuser:bht%402025@192.168.1.6:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1"
+# VIDEO_SOURCE = "./config/123Test.mp4"
 MODEL_PATH = "yolo11n.pt"
 LPD_PATH = "license_plate_detector.pt"
-SLOTS_JSON_FILE = "detection/parking_slots__forV.json"
+SLOTS_JSON_FILE = "detection/parking_slots.json"
 
 VEHICLE_CLASSES = {2, 3, 5, 7}
 BHUTAN_REGEX = r"(BP|BT|BG|GP|B8|8P|8T|8G)[\- ]?\d[\- ]?[A-Z]\d{4}"
@@ -20,19 +20,29 @@ FRAME_SKIP = 4
 MIN_FRAMES_FOR_CHANGE = 3
 
 # BEV
+SRC_POINTS = np.float32([
+    [646, 419],
+    [496, 1438],
+    [2558, 1438],
+    [2558, 169]
+])
+# for video
+
 # SRC_POINTS = np.float32([
-#     [646, 419],
-#     [496, 1438],
+#     [400, 240],
+#     [400, 1438],
 #     [2558, 1438],
-#     [2558, 169]
+#     [2558, 270]
 # ])
 
-SRC_POINTS = np.float32([
-    [400, 240],
-    [400, 1438],
-    [2558, 1438],
-    [2558, 270]
-])
+ROI_POINTS = np.float32([
+      [1984,255],
+      [758,373],
+      [598,1438],
+      [2558,1438],
+      [2556,643]
+    ])
+
 
 BEV_WIDTH, BEV_HEIGHT = 800, 600
 

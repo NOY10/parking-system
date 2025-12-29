@@ -40,6 +40,8 @@
 #     app.run(host="0.0.0.0", port=5000, threaded=True, use_reloader=False)
 
 
+
+
 from flask import Flask, Response, jsonify, render_template
 from flask_cors import CORS
 import cv2, time
@@ -82,21 +84,26 @@ def parking_status():
 
 @app.route("/parking_sessions", methods=["GET"])
 def get_parking_sessions():
-    records = db_manager.get_all_sessions()
-
-    data = []
-    for r in records:
-        data.append({
-            "id": r.id,
-            "slot_id": r.slot_id,
-            "vehicle_id": r.vehicle_id,
-            "car_plate": r.car_plate,
-            "start_time": r.start_time.strftime("%Y-%m-%d %H:%M:%S") if r.start_time else None,
-            "end_time": r.end_time.strftime("%Y-%m-%d %H:%M:%S") if r.end_time else None,
-            "duration_sec": r.duration_sec
-        })
-
-    return jsonify(data)
+    """Fetches all parking history from the database."""
+    try:
+        records = db_manager.get_all_sessions()
+        
+        data = []
+        for r in records:
+            data.append({
+                "id": r.id,
+                "slot_id": r.slot_id,
+                "car_plate": r.car_plate,
+                "vehicle_id": r.vehicle_id,
+                "start_time": r.start_time.strftime("%Y-%m-%d %H:%M:%S") if r.start_time else None,
+                "end_time": r.end_time.strftime("%Y-%m-%d %H:%M:%S") if r.end_time else None,
+                "duration_sec": r.duration_sec
+            })
+            
+        return jsonify(data)
+    except Exception as e:
+        print(f"❌ Error fetching sessions: {e}")
+        return jsonify({"error": "Could not retrieve sessions"}), 500
 
 
 if __name__ == "__main__":

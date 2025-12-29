@@ -13,6 +13,7 @@ class ParkingSession(Base):
     id = Column(Integer, primary_key=True)
     slot_id = Column(Integer, nullable=False)
     car_plate = Column(String(20), default="DETECTING...")
+    plate_image_path = Column(String(255), nullable=True)
     vehicle_id = Column(Integer, nullable=False)
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime, nullable=True)

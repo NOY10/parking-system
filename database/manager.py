@@ -30,19 +30,39 @@ class DBManager:
         finally:
             session.close()
 
-    def update_plate(self, vehicle_id, plate_text):
+    # def update_plate(self, vehicle_id, plate_text):
+    #     """Called when the ANPR worker finishes processing a batch."""
+    #     session = self.Session()
+    #     try:
+    #         # Match the plate to the session using the unique Tracking ID
+    #         record = session.query(ParkingSession).filter(
+    #             ParkingSession.vehicle_id == int(vehicle_id)
+    #         ).order_by(ParkingSession.start_time.desc()).first()
+            
+    #         if record:
+    #             record.car_plate = plate_text
+    #             session.commit()
+    #             print(f"📁 DB: Updated Plate for ID {vehicle_id} -> {plate_text}")
+    #     except Exception as e:
+    #         print(f"❌ DB Error (Plate): {e}")
+    #         session.rollback()
+    #     finally:
+    #         session.close()
+
+    def update_plate(self, vehicle_id, plate_text, image_path=None):
         """Called when the ANPR worker finishes processing a batch."""
         session = self.Session()
         try:
-            # Match the plate to the session using the unique Tracking ID
             record = session.query(ParkingSession).filter(
                 ParkingSession.vehicle_id == int(vehicle_id)
             ).order_by(ParkingSession.start_time.desc()).first()
             
             if record:
                 record.car_plate = plate_text
+                if image_path:
+                    record.plate_image_path = image_path # <-- SAVE PATH
                 session.commit()
-                print(f"📁 DB: Updated Plate for ID {vehicle_id} -> {plate_text}")
+                print(f"📁 DB: Updated Plate & Image for ID {vehicle_id}")
         except Exception as e:
             print(f"❌ DB Error (Plate): {e}")
             session.rollback()
